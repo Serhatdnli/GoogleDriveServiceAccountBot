@@ -1,4 +1,4 @@
-﻿using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
 using Google.Apis.Drive.v3.Data;
 using Google.Apis.Requests;
@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using static Google.Apis.Requests.BatchRequest;
 using static System.Net.WebRequestMethods;
 
 namespace DriveSyncer
@@ -21,6 +22,8 @@ namespace DriveSyncer
 		static string DriveRootFolderId;
 
 		static string setupPath = @"\Setup.txt";
+
+		static DriveService service;
 
 		static void Main(string[] args)
 		{
@@ -35,15 +38,21 @@ namespace DriveSyncer
 		}
 
 
-		public static async Task<string> DeleteItem(DriveService service, string itemId)
+		public static async Task<string> DeleteItem(string itemId)
 		{
 			var response = await service.Files.Delete(itemId).ExecuteAsync();
 			return response;
 		}
 
 		//public static List<string> GetFolderNames() => Directory.GetDirectories(FilePath).ToList();
-		public static async Task<Google.Apis.Upload.IUploadProgress> UploadFile(DriveService service, string filePath, string mimeType, string parentId)
+		public static async Task<Google.Apis.Upload.IUploadProgress> UploadFile(string filePath, string mimeType, string parentId)
 		{
+
+
+			FileInfo fileInfo = new FileInfo(filePath);
+			DateTime localCreatedTime = fileInfo.CreationTime;
+			DateTime localModifiedTime = fileInfo.LastWriteTime;
+
 			var excistItemMetadata = new Google.Apis.Drive.v3.Data.File()
 			{
 				MimeType = mimeType,
@@ -51,13 +60,17 @@ namespace DriveSyncer
 				Parents = new List<string>
 				{
 					parentId
-				}
+				},
+				CreatedTime = localCreatedTime,
+				ModifiedTime = localModifiedTime
+
+
 			};
 
 			using (var stream = new FileStream(filePath, FileMode.Open))
 			{
 				var itemrequest = service.Files.Create(body: excistItemMetadata, stream, mimeType);
-				var itemresponse = await itemrequest.UploadAsync();	
+				var itemresponse = await itemrequest.UploadAsync();
 
 
 				return itemresponse;
@@ -67,8 +80,12 @@ namespace DriveSyncer
 
 		}
 
-		public static async Task<Google.Apis.Drive.v3.Data.File> CreateFile(DriveService service, string filePath, string mimeType, string parentId)
+		public static async Task<Google.Apis.Drive.v3.Data.File> CreateFile(string filePath, string mimeType, string parentId)
 		{
+			FileInfo fileInfo = new FileInfo(filePath);
+			DateTime localCreatedTime = fileInfo.CreationTime;
+			DateTime localModifiedTime = fileInfo.LastWriteTime;
+
 			var excistItemMetadata = new Google.Apis.Drive.v3.Data.File()
 			{
 				MimeType = mimeType,
@@ -76,7 +93,9 @@ namespace DriveSyncer
 				Parents = new List<string>
 				{
 					parentId
-				}
+				},
+				CreatedTime = localCreatedTime,
+				ModifiedTime = localModifiedTime
 
 			};
 
@@ -90,41 +109,100 @@ namespace DriveSyncer
 
 		}
 
-
-		public static async Task<IList<Google.Apis.Drive.v3.Data.File>> GetFiles(DriveService service, string parentId)
+		public static async Task<IList<Google.Apis.Drive.v3.Data.File>> GetFiles(string parentId)
 		{
 			var request = service.Files.List();
 			request.Q = $"'{parentId}' in parents";
+			request.Fields = "files(id, name, size, modifiedTime, mimeType,createdTime)";
 			var response = await request.ExecuteAsync();
 			return response.Files;
 		}
 
-		public static async Task<string> DeleteNotExcistFolders(DriveService service, string fileId, string dirFile)
-		{
-			var excistDriveItems = await GetFiles(service, fileId);
 
-			List<string> items = Directory.GetDirectories(dirFile).ToList();
+		public static async Task<IList<Google.Apis.Drive.v3.Data.File>> GetFolders(string parentId)
+		{
+			var request = service.Files.List();
+			request.Q = $"'{parentId}' in parents and mimeType = 'application/vnd.google-apps.folder'";
+			request.Fields = "files(id, name, size, modifiedTime, mimeType,createdTime)";
+			var response = await request.ExecuteAsync();
+			return response.Files;
+		}
+
+
+		public static async Task CheckFileChanges(string driveFileId, string localFileDir)
+		{
+
+			var excistDriveItems = await GetFiles(driveFileId);
+			List<string> localItems = Directory.GetFiles(localFileDir).ToList();
+
 
 			foreach (var driveItem in excistDriveItems)
 			{
 				bool itemExcist = false;
-				foreach (var item in items)
-				{
 
-					if (driveItem.Name == Path.GetFileName(item))
+				foreach (var localItem in localItems)
+				{
+					if (driveItem.Name == Path.GetFileName(localItem))
 					{
 						itemExcist = true;
+						FileInfo fileInfo = new FileInfo(localItem);
+						DateTime localTime = fileInfo.LastWriteTime;
+						DateTime driveTime = driveItem.ModifiedTime.Value;
 
-						await DeleteNotExcistFolders(service, driveItem.Id, item);
+						if (driveItem.MimeType != "application/vnd.google-apps.folder" && Math.Abs((driveTime - localTime).TotalMinutes) > 5)
+						{
+							Console.WriteLine("Updating.. " + driveItem.Name + "  " + driveTime + "  " + localTime);
+							await DeleteItem(driveItem.Id);
 
+							break;
+						}
 					}
-
 				}
 
-				if (!itemExcist && items.Count != 0)
+				if (!itemExcist)
 				{
 					Console.WriteLine("Removing.. " + driveItem.Name);
-					await DeleteItem(service, driveItem.Id);
+					await DeleteItem(driveItem.Id);
+				}
+			}
+
+		}
+
+		public static async Task<string> CheckFolderChanges(string driveFileId, string localFileDir)
+		{
+			var excistDriveItems = await GetFolders(driveFileId);
+
+			List<string> localDirections = Directory.GetDirectories(localFileDir).ToList();
+
+
+			if (localDirections.Count == 0)
+			{
+				await CheckFileChanges(driveFileId, localFileDir);
+
+			}
+
+
+
+
+			foreach (var driveItem in excistDriveItems)
+			{
+				bool itemExcist = false;
+				foreach (var localFile in localDirections)
+				{
+					//Console.WriteLine(driveItem.MimeType + "  " + localFile);					//Console.WriteLine(driveItem.MimeType + "  " + localFile);
+
+					if (driveItem.Name == Path.GetFileName(localFile))
+					{
+						itemExcist = true;
+						await CheckFolderChanges(driveItem.Id, localFile);
+						break;
+					}
+				}
+
+				if (!itemExcist && localDirections.Count != 0)
+				{
+					Console.WriteLine("Removing.. " + driveItem.Name);
+					await DeleteItem(driveItem.Id);
 				}
 
 			}
@@ -144,77 +222,38 @@ namespace DriveSyncer
 				GoogleCredential credential = GoogleCredential.FromJson(json)
 					.CreateScoped(DriveService.Scope.Drive);
 				// Create Drive API service.
-				var service = new DriveService(new BaseClientService.Initializer
+				service = new DriveService(new BaseClientService.Initializer
 				{
 					HttpClientInitializer = credential,
 				});
 
+				await CheckFolderChanges(DriveRootFolderId, FilePath);
 
 
 
-				List<string> dirNames = Directory.GetDirectories(FilePath).ToList();
-
-				var fileList = await GetFiles(service, DriveRootFolderId);
 
 
-				await DeleteNotExcistFolders(service, DriveRootFolderId, FilePath);
+				List<string> localFolders = Directory.GetDirectories(FilePath).ToList();
 
-				//foreach (var file in fileList)
-				//{
-				//	bool fileExcist = false;
-				//	foreach (var dirFile in dirNames)
-				//	{
-				//		if (file.Name == Path.GetFileName(dirFile))
-				//		{
-				//			fileExcist = true;
+				var driveFolderList = await GetFolders(DriveRootFolderId);
 
-				//			var excistDriveItems = await GetFiles(service, file.Id);
 
-				//			List<string> items = Directory.GetFiles(dirFile).ToList();
 
-				//			foreach (var driveItem in excistDriveItems)
-				//			{
-				//				bool itemExcist = false;
-				//				foreach (var item in items)
-
-				//				{
-				//					if (driveItem.Name == Path.GetFileName(item))
-				//					{
-				//						itemExcist = true;
-				//						break;
-				//					}
-				//				}
-
-				//				if (!itemExcist)
-				//				{
-				//					await DeleteItem(service, driveItem.Id);
-				//				}
-				//			}
-
-				//			break;
-				//		}
-				//	}
-
-				//	if (!fileExcist)
-				//	{
-				//		await DeleteItem(service, file.Id);
-				//	}
-				//}
 
 				List<string> excistFolders = new List<string>();
 
-				foreach (var dirFile in dirNames)
+				foreach (var localDir in localFolders)
 				{
 					bool fileExcist = false;
-					foreach (var file in fileList)
+					foreach (var driveFile in driveFolderList)
 					{
-						if (file.Name == Path.GetFileName(dirFile))
+						if (driveFile.Name == Path.GetFileName(localDir))
 						{
 							fileExcist = true;
 
-							var excistFileItems = await GetFiles(service, file.Id);
+							var excistFileItems = await GetFiles(driveFile.Id);
 
-							List<string> items = Directory.GetFiles(dirFile).ToList();
+							List<string> items = Directory.GetFiles(localDir).ToList();
 
 							foreach (var item in items)
 							{
@@ -230,7 +269,9 @@ namespace DriveSyncer
 
 								if (!itemExcist)
 								{
-									var itemResponse = await UploadFile(service, item, "application/vnd.google-apps", file.Id);
+									Console.WriteLine("Creating.. " + Path.GetFileName(item));
+
+									var itemResponse = await UploadFile(item, "application/vnd.google-apps", driveFile.Id);
 								}
 							}
 
@@ -240,59 +281,23 @@ namespace DriveSyncer
 					}
 
 					if (!fileExcist)
-						excistFolders.Add(dirFile);
+						excistFolders.Add(localDir);
 				}
+
+
 
 				foreach (var folder in excistFolders)
 				{
-					//var excistFileMetadata = new Google.Apis.Drive.v3.Data.File()
-					//{
-					//	Name = Path.GetFileName(folder),
-					//	MimeType = "application/vnd.google-apps.folder",
-					//	Parents = new List<string>
-					//	{
-					//		DriveRootFolderId
-					//	}
-					//};
 
-					//var request = service.Files.Create(body: excistFileMetadata);
-					//var response = await request.ExecuteAsync();
-
-					var response = await CreateFile(service, folder, "application/vnd.google-apps.folder", DriveRootFolderId);
+					var response = await CreateFile(folder, "application/vnd.google-apps.folder", DriveRootFolderId);
 
 					List<string> items = Directory.GetFiles(folder).ToList();
 
 					foreach (var item in items)
 					{
-						//var excistItemMetadata = new Google.Apis.Drive.v3.Data.File()
-						//{
-						//	Name = Path.GetFileName(item),
-						//	MimeType = "application/vnd.google-apps",
-						//	Parents = new List<string>
-						//	{
-						//		response.Id
-						//	}
-						//};
-
-						//using (var stream = new FileStream(item, FileMode.Open))
-						//{
-						//	var itemrequest = service.Files.Create(body: excistItemMetadata, stream, "application/vnd.google-apps");
-						//	var itemresponse = await itemrequest.UploadAsync();
-
-						//}
-
-						var itemresponse = await UploadFile(service, item, "application/vnd.google-apps", response.Id);
-
+						var itemresponse = await UploadFile(item, "application/vnd.google-apps", response.Id);
 					}
 
-
-
-
-
-					//var file = response.Id;
-
-
-					//daha sonra içindekileri upload etme.
 				}
 
 				Console.WriteLine("Senkronizasyon Başarili");
