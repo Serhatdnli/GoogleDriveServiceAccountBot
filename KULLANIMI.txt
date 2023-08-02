@@ -1,0 +1,31 @@
+ _     ____  ____  _____ ____  ____  _  _  __   _____ ____  _      _____ ____ 
+/ \ /\/  __\/  __\/  __//  __\/  __\/ \/ |/ /  /  __//  _ \/ \__/|/  __// ___\
+| | |||  \/||  \/||  \  |  \/||  \/|| ||   /   | |  _| / \|| |\/|||  \  |    \
+| \_/||  __/|  __/|  /_ |    /|  __/| ||   \   | |_//| |-||| |  |||  /_ \___ |
+\____/\_/   \_/   \____\\_/\_\\_/   \_/\_|\_\  \____\\_/ \|\_/  \|\____\\____/                                                                            
+
+
+* Setup.txt dosyasına "LocalKlasorAdı,DriveKlasorID" olacak şekilde düzenlenmesi gerekiyor.
+
+* LocalKlasorun, Setup.txt'nin, drivesyncer.json'un DriveSyncer.exe ile aynı konumda olması gerekiyor.
+
+
+
+
+
+Drive Klasor ID Bulma
+https://drive.google.com/drive/folders/      12pbpmOMKomiDYrSNgvAnXMw_wlvnxqOn    <------ Klasor ID
+
+Hizmet Hesabı oluşturma
+https://console.cloud.google.com/ >> yeni Google Drive API Projesi >>, Service Account hizmet hesabı oluştur >>oluşturulan mail hesabına ana drivedan yetki vermek ve credential.json dosyasını indirip exenin bulunduğu konuma drivesyncer.json isminde atmak gerekiyor.
+
+
+Google Drive MimeTypes
+
+https://developers.google.com/drive/api/guides/mime-types?hl=tr
+
+
+Drive Documents 
+
+https://developers.google.com/drive/api/guides/manage-uploads?hl=tr#resumable
+https://developers.google.com/drive/api/guides/folder?hl=tr
