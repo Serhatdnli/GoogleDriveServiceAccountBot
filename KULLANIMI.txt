@@ -1,31 +1,40 @@
- _     ____  ____  _____ ____  ____  _  _  __   _____ ____  _      _____ ____ 
-/ \ /\/  __\/  __\/  __//  __\/  __\/ \/ |/ /  /  __//  _ \/ \__/|/  __// ___\
-| | |||  \/||  \/||  \  |  \/||  \/|| ||   /   | |  _| / \|| |\/|||  \  |    \
-| \_/||  __/|  __/|  /_ |    /|  __/| ||   \   | |_//| |-||| |  |||  /_ \___ |
-\____/\_/   \_/   \____\\_/\_\\_/   \_/\_|\_\  \____\\_/ \|\_/  \|\____\\____/                                                                            
+Türkçe Sürüm:
 
+Setup.txt dosyasını düzenlemek için "LocalKlasorAdı,DriveKlasorID" biçimini kullanmanız gerekmektedir.
 
-* Setup.txt dosyasına "LocalKlasorAdı,DriveKlasorID" olacak şekilde düzenlenmesi gerekiyor.
+LocalKlasörün, Setup.txt'nin, drivesyncer.json dosyasının DriveSyncer.exe ile aynı konumda bulunması gerekmektedir.
 
-* LocalKlasorun, Setup.txt'nin, drivesyncer.json'un DriveSyncer.exe ile aynı konumda olması gerekiyor.
+Drive Klasör Kimliği (ID) Bulma
+https://drive.google.com/drive/folders/ 12pbpmOMKomiDYrSNgvAnXMw_wlvnxqOn <------ Klasör Kimliği (ID)
 
+Hizmet Hesabı Oluşturma
+https://console.cloud.google.com/ adresine gidin, yeni Google Drive API Projesi oluşturun, Service Account (Hizmet Hesabı) oluşturun, oluşturulan e-posta hesabına ana drivedan yetki verin ve credential.json dosyasını indirip exenin bulunduğu konuma drivesyncer.json adıyla kaydedin.
 
-
-
-
-Drive Klasor ID Bulma
-https://drive.google.com/drive/folders/      12pbpmOMKomiDYrSNgvAnXMw_wlvnxqOn    <------ Klasor ID
-
-Hizmet Hesabı oluşturma
-https://console.cloud.google.com/ >> yeni Google Drive API Projesi >>, Service Account hizmet hesabı oluştur >>oluşturulan mail hesabına ana drivedan yetki vermek ve credential.json dosyasını indirip exenin bulunduğu konuma drivesyncer.json isminde atmak gerekiyor.
-
-
-Google Drive MimeTypes
-
+Google Drive Mime Türleri
 https://developers.google.com/drive/api/guides/mime-types?hl=tr
 
-
-Drive Documents 
-
+Drive Belgeleri Yönetme
 https://developers.google.com/drive/api/guides/manage-uploads?hl=tr#resumable
 https://developers.google.com/drive/api/guides/folder?hl=tr
+
+
+
+
+English version:
+
+The Setup.txt file needs to be edited in the format "LocalFolderName,DriveFolderID".
+
+The LocalFolder should be in the same location as Setup.txt and drivesyncer.json, alongside DriveSyncer.exe.
+
+Finding Drive Folder ID
+https://drive.google.com/drive/folders/ 12pbpmOMKomiDYrSNgvAnXMw_wlvnxqOn <------ Folder ID
+
+Creating a Service Account
+Go to https://console.cloud.google.com/, create a new Google Drive API Project, create a Service Account, grant it permissions from your main Google Drive, download the credential.json file, and save it in the same location as the .exe with the name drivesyncer.json.
+
+Google Drive Mime Types
+https://developers.google.com/drive/api/guides/mime-types?hl=en
+
+Managing Drive Documents
+https://developers.google.com/drive/api/guides/manage-uploads?hl=en#resumable
+https://developers.google.com/drive/api/guides/folder?hl=en
